@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import {
@@ -15,13 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface Screen {
   id: string;
@@ -31,12 +23,52 @@ interface Screen {
   modules: any[];
 }
 
+const moduleTemplates = [
+  { 
+    type: "text", 
+    icon: "Type", 
+    label: "Текст", 
+    color: "bg-blue-500",
+    preview: { title: "Заголовок", content: "Текст сообщения" }
+  },
+  { 
+    type: "image", 
+    icon: "Image", 
+    label: "Изображение", 
+    color: "bg-purple-500",
+    preview: { url: "https://cdn.poehali.dev/files/9c83f3d9-b448-4541-a381-2fe8e05356b1.jpg", alt: "Фото" }
+  },
+  { 
+    type: "weather", 
+    icon: "CloudRain", 
+    label: "Погода", 
+    color: "bg-cyan-500",
+    preview: { location: "Москва", temp: "+6°", condition: "Небольшой дождь" }
+  },
+  { 
+    type: "time", 
+    icon: "Clock", 
+    label: "Часы", 
+    color: "bg-indigo-500",
+    preview: {}
+  },
+  { 
+    type: "schedule", 
+    icon: "Calendar", 
+    label: "Расписание", 
+    color: "bg-emerald-500",
+    preview: { items: [
+      { time: "09:00", subject: "Русский язык", room: "каб. 207" },
+      { time: "10:00", subject: "Математика", room: "каб. 215" }
+    ]}
+  },
+];
+
 const AdminPanel = () => {
   const [screens, setScreens] = useState<Screen[]>([]);
   const [selectedScreen, setSelectedScreen] = useState<string | null>(null);
   const [pinInput, setPinInput] = useState("");
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
-  const [moduleType, setModuleType] = useState("");
   const { toast } = useToast();
 
   const connectScreen = () => {
@@ -61,51 +93,25 @@ const AdminPanel = () => {
     localStorage.setItem(`screen-${pinInput}`, JSON.stringify({ modules: [] }));
     
     toast({
-      title: "Экран подключен",
+      title: "✓ Экран подключен",
       description: `PIN ${pinInput} успешно привязан`,
     });
 
     setPinInput("");
+    setSelectedScreen(newScreen.id);
   };
 
-  const addModule = () => {
-    if (!selectedScreen || !moduleType) return;
+  const addModule = (template: typeof moduleTemplates[0]) => {
+    if (!selectedScreen) return;
 
     const screen = screens.find((s) => s.id === selectedScreen);
     if (!screen) return;
 
-    const newModule: any = {
+    const newModule = {
       id: Date.now().toString(),
-      type: moduleType,
-      data: {},
+      type: template.type,
+      data: template.preview,
     };
-
-    switch (moduleType) {
-      case "text":
-        newModule.data = { title: "Заголовок", content: "Текст сообщения" };
-        break;
-      case "weather":
-        newModule.data = { location: "Москва" };
-        break;
-      case "time":
-        newModule.data = {};
-        break;
-      case "schedule":
-        newModule.data = {
-          items: [
-            { time: "09:00", subject: "Русский язык", room: "каб. 207" },
-            { time: "10:00", subject: "Математика", room: "каб. 215" },
-            { time: "11:00", subject: "История", room: "каб. 312" },
-          ],
-        };
-        break;
-      case "image":
-        newModule.data = {
-          url: "https://cdn.poehali.dev/files/9c83f3d9-b448-4541-a381-2fe8e05356b1.jpg",
-          alt: "Изображение",
-        };
-        break;
-    }
 
     const updatedModules = [...screen.modules, newModule];
     const updatedScreens = screens.map((s) =>
@@ -116,12 +122,11 @@ const AdminPanel = () => {
     localStorage.setItem(`screen-${screen.pin}`, JSON.stringify({ modules: updatedModules }));
 
     toast({
-      title: "Модуль добавлен",
-      description: `${moduleType} добавлен на экран`,
+      title: "✓ Модуль добавлен",
+      description: `${template.label} добавлен на экран`,
     });
 
     setIsAddModuleOpen(false);
-    setModuleType("");
   };
 
   const removeModule = (moduleId: string) => {
@@ -139,129 +144,151 @@ const AdminPanel = () => {
     localStorage.setItem(`screen-${screen.pin}`, JSON.stringify({ modules: updatedModules }));
 
     toast({
-      title: "Модуль удален",
+      title: "✓ Модуль удален",
       description: "Модуль успешно удален с экрана",
     });
   };
 
-  const getModuleIcon = (type: string) => {
-    const icons: Record<string, string> = {
-      text: "Type",
-      image: "Image",
-      weather: "CloudRain",
-      time: "Clock",
-      schedule: "Calendar",
-    };
-    return icons[type] || "Square";
-  };
+  const selectedScreenData = screens.find((s) => s.id === selectedScreen);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b bg-white">
-        <div className="container mx-auto px-6 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50/30">
+      <div className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Icon name="Settings" size={28} className="text-primary" />
-              <h1 className="text-2xl font-bold">Панель администратора</h1>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                <Icon name="Settings" size={24} className="text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-display font-bold text-gray-900">Админ панель</h1>
+                <p className="text-sm text-gray-500">Управление экранами</p>
+              </div>
             </div>
-            <Badge variant="outline" className="text-sm">
+            <Badge variant="outline" className="text-sm font-medium px-4 py-2">
               {screens.length} {screens.length === 1 ? "экран" : "экранов"}
             </Badge>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-8">
-        <Tabs defaultValue="screens" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="screens">
-              <Icon name="Monitor" size={18} className="mr-2" />
-              Экраны
-            </TabsTrigger>
-            <TabsTrigger value="content">
-              <Icon name="LayoutGrid" size={18} className="mr-2" />
-              Контент
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="screens" className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Подключить новый экран</h2>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Label htmlFor="pin">PIN-код экрана</Label>
-                  <Input
-                    id="pin"
-                    placeholder="Введите 6-значный PIN"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    maxLength={6}
-                    className="mt-2"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={connectScreen} size="lg">
-                    <Icon name="Link" size={20} className="mr-2" />
-                    Подключить
-                  </Button>
-                </div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {screens.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Card className="p-12 max-w-md w-full text-center animate-scale-in">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Icon name="MonitorPlay" size={40} className="text-primary" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-3">Подключите экран</h2>
+              <p className="text-gray-600 mb-8">
+                Откройте режим экрана на устройстве и введите PIN-код
+              </p>
+              <div>
+                <Label htmlFor="pin" className="text-left block mb-2 font-medium">PIN-код</Label>
+                <Input
+                  id="pin"
+                  placeholder="000000"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  maxLength={6}
+                  className="text-center text-2xl font-mono tracking-wider h-14 mb-4"
+                />
+                <Button onClick={connectScreen} size="lg" className="w-full">
+                  <Icon name="Link" size={20} className="mr-2" />
+                  Подключить экран
+                </Button>
               </div>
             </Card>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-4 space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-display font-bold text-lg">Экраны</h3>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Icon name="Plus" size={16} className="mr-1" />
+                      Новый
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Подключить новый экран</DialogTitle>
+                      <DialogDescription>
+                        Введите PIN-код с экрана
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div>
+                        <Label htmlFor="new-pin">PIN-код</Label>
+                        <Input
+                          id="new-pin"
+                          placeholder="000000"
+                          value={pinInput}
+                          onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                          maxLength={6}
+                          className="text-center text-xl font-mono mt-2"
+                        />
+                      </div>
+                      <Button onClick={connectScreen} className="w-full">
+                        Подключить
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {screens.map((screen) => (
+              {screens.map((screen, idx) => (
                 <Card
                   key={screen.id}
-                  className={`p-6 cursor-pointer transition-all ${
+                  className={`p-4 cursor-pointer transition-all hover:shadow-md animate-fade-in ${
                     selectedScreen === screen.id
-                      ? "ring-2 ring-primary shadow-lg"
-                      : "hover:shadow-md"
+                      ? "ring-2 ring-primary shadow-lg bg-primary/5"
+                      : "hover:bg-gray-50"
                   }`}
+                  style={{ animationDelay: `${idx * 0.05}s` }}
                   onClick={() => setSelectedScreen(screen.id)}
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <Icon name="Monitor" size={24} className="text-primary" />
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        selectedScreen === screen.id ? 'bg-primary text-white' : 'bg-gray-100'
+                      }`}>
+                        <Icon name="Monitor" size={20} />
+                      </div>
                       <div>
-                        <h3 className="font-semibold">{screen.name}</h3>
-                        <p className="text-sm text-gray-500">PIN: {screen.pin}</p>
+                        <h4 className="font-semibold text-sm">{screen.name}</h4>
+                        <p className="text-xs text-gray-500 font-mono">PIN: {screen.pin}</p>
                       </div>
                     </div>
-                    <Badge variant={screen.status === "online" ? "default" : "secondary"}>
+                    <Badge variant={screen.status === "online" ? "default" : "secondary"} className="text-xs">
                       {screen.status === "online" ? "Онлайн" : "Офлайн"}
                     </Badge>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Модулей: {screen.modules.length}
+                  <div className="mt-3 text-xs text-gray-600">
+                    <Icon name="LayoutGrid" size={12} className="inline mr-1" />
+                    {screen.modules.length} модулей
                   </div>
                 </Card>
               ))}
             </div>
 
-            {screens.length === 0 && (
-              <div className="text-center py-12">
-                <Icon name="MonitorOff" size={64} className="mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">Нет подключенных экранов</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Откройте страницу экрана и введите PIN-код выше
-                </p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="content" className="space-y-6">
-            {!selectedScreen ? (
-              <div className="text-center py-12">
-                <Icon name="Monitor" size={64} className="mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">Выберите экран для управления контентом</p>
-              </div>
-            ) : (
-              <>
-                <Card className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold">
-                      Модули экрана: {screens.find((s) => s.id === selectedScreen)?.name}
-                    </h2>
+            <div className="lg:col-span-8">
+              {!selectedScreen ? (
+                <Card className="p-12 text-center">
+                  <Icon name="MonitorOff" size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-500">Выберите экран</p>
+                </Card>
+              ) : (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-display font-bold">
+                        {selectedScreenData?.name}
+                      </h2>
+                      <p className="text-sm text-gray-500">Управление модулями</p>
+                    </div>
                     <Dialog open={isAddModuleOpen} onOpenChange={setIsAddModuleOpen}>
                       <DialogTrigger asChild>
                         <Button>
@@ -269,100 +296,84 @@ const AdminPanel = () => {
                           Добавить модуль
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Добавить модуль</DialogTitle>
+                          <DialogTitle>Выберите тип модуля</DialogTitle>
                           <DialogDescription>
-                            Выберите тип модуля для добавления на экран
+                            Добавьте новый блок контента на экран
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 pt-4">
-                          <div>
-                            <Label>Тип модуля</Label>
-                            <Select value={moduleType} onValueChange={setModuleType}>
-                              <SelectTrigger className="mt-2">
-                                <SelectValue placeholder="Выберите тип" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="text">
-                                  <div className="flex items-center gap-2">
-                                    <Icon name="Type" size={16} />
-                                    Текст
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="image">
-                                  <div className="flex items-center gap-2">
-                                    <Icon name="Image" size={16} />
-                                    Изображение
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="weather">
-                                  <div className="flex items-center gap-2">
-                                    <Icon name="CloudRain" size={16} />
-                                    Погода
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="time">
-                                  <div className="flex items-center gap-2">
-                                    <Icon name="Clock" size={16} />
-                                    Часы
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="schedule">
-                                  <div className="flex items-center gap-2">
-                                    <Icon name="Calendar" size={16} />
-                                    Расписание
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button onClick={addModule} className="w-full">
-                            Добавить
-                          </Button>
+                        <div className="grid grid-cols-2 gap-4 pt-4">
+                          {moduleTemplates.map((template) => (
+                            <button
+                              key={template.type}
+                              onClick={() => addModule(template)}
+                              className="p-6 border-2 rounded-2xl hover:border-primary hover:shadow-lg transition-all text-left group"
+                            >
+                              <div className={`w-12 h-12 ${template.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                <Icon name={template.icon as any} size={24} className="text-white" />
+                              </div>
+                              <h3 className="font-semibold mb-1">{template.label}</h3>
+                              <p className="text-xs text-gray-500">Нажмите для добавления</p>
+                            </button>
+                          ))}
                         </div>
                       </DialogContent>
                     </Dialog>
                   </div>
 
-                  <div className="grid gap-4">
-                    {screens
-                      .find((s) => s.id === selectedScreen)
-                      ?.modules.map((module) => (
-                        <Card key={module.id} className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Icon name={getModuleIcon(module.type)} size={24} className="text-primary" />
-                              <div>
-                                <p className="font-medium capitalize">{module.type}</p>
-                                <p className="text-sm text-gray-500">
-                                  ID: {module.id}
-                                </p>
+                  {selectedScreenData && selectedScreenData.modules.length === 0 ? (
+                    <Card className="p-12 text-center">
+                      <Icon name="LayoutGrid" size={48} className="mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-500 mb-4">Нет модулей на экране</p>
+                      <Button onClick={() => setIsAddModuleOpen(true)} variant="outline">
+                        Добавить первый модуль
+                      </Button>
+                    </Card>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {selectedScreenData?.modules.map((module, idx) => {
+                        const template = moduleTemplates.find((t) => t.type === module.type);
+                        return (
+                          <Card 
+                            key={module.id} 
+                            className="p-6 hover:shadow-lg transition-all group animate-scale-in"
+                            style={{ animationDelay: `${idx * 0.05}s` }}
+                          >
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 ${template?.color || 'bg-gray-500'} rounded-xl flex items-center justify-center`}>
+                                  <Icon name={template?.icon as any || "Square"} size={20} className="text-white" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold">{template?.label}</h4>
+                                  <p className="text-xs text-gray-500 font-mono">ID: {module.id.slice(-6)}</p>
+                                </div>
                               </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeModule(module.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <Icon name="Trash2" size={16} className="text-red-500" />
+                              </Button>
                             </div>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeModule(module.id)}
-                            >
-                              <Icon name="Trash2" size={16} />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
-
-                    {screens.find((s) => s.id === selectedScreen)?.modules.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        <Icon name="LayoutGrid" size={48} className="mx-auto mb-3 text-gray-400" />
-                        <p>Нет модулей на этом экране</p>
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+                            <div className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+                              <pre className="whitespace-pre-wrap">
+                                {JSON.stringify(module.data, null, 2)}
+                              </pre>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
